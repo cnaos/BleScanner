@@ -1,8 +1,10 @@
 package io.github.cnaos.blescanner
 
 import android.Manifest
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -84,10 +86,6 @@ class DeviceListActivity : AppCompatActivity(), AnkoLogger {
         })
     }
 
-    override fun onResume() {
-        super.onResume()
-        viewModel.isGrantedBLEPermission = isGrantedBlePermission()
-    }
 
     fun isGrantedBlePermission(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -97,6 +95,31 @@ class DeviceListActivity : AppCompatActivity(), AnkoLogger {
         }
     }
 
+    override fun onPause() {
+        super.onPause()
+
+        // スキャンの停止
+        viewModel.stopDeviceScan()
+    }
+
+
+    private fun requestEnableBluetoothFeature() {
+        if (viewModel.bluetoothAdapter.isEnabled) {
+            return
+        }
+        // デバイスのBluetooth機能が有効になっていないときは、有効化要求（ダイアログ表示）
+        val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+        startActivityForResult(
+            enableBtIntent,
+            REQUEST_ENABLE_BLUETOOTH
+        )
+    }
+
+    private fun startDeviceScan() {
+        viewModel.isGrantedBLEPermission = isGrantedBlePermission()
+        requestEnableBluetoothFeature()
+        viewModel.startDeviceScan()
+    }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.device_list, menu)
@@ -118,9 +141,10 @@ class DeviceListActivity : AppCompatActivity(), AnkoLogger {
 
     override fun onOptionsItemSelected(item: MenuItem?): Boolean {
         when (item?.itemId) {
-            R.id.menuitem_scan -> viewModel.startDeviceScan()    // スキャンの開始
+            R.id.menuitem_scan -> startDeviceScan()    // スキャンの開始
             R.id.menuitem_stop -> viewModel.stopDeviceScan()    // スキャンの停止
         }
         return true
     }
+
 }
