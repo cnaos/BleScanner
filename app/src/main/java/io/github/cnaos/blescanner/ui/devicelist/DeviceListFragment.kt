@@ -37,21 +37,28 @@ class DeviceListFragment : Fragment() {
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
+        val adapter = DeviceListViewAdapter(context!!)
+        adapter.setOnItemClicked { _, bleDeviceData ->
+            viewModel.stopDeviceScan()
 
-        val adapter =
-            DeviceListViewAdapter(context!!, object : DeviceListViewAdapter.ListRowClickListener {
-                override fun onClickRow(tappedView: View, rowModel: BleDeviceData) {
-                    // クリックされたアイテムの取得
-                    viewModel.stopDeviceScan()
+            activity?.startActivity(
+                activity?.intentFor<DeviceDetailActivity>(
+                    DeviceDetailActivity.EXTRAS_DEVICE_NAME to bleDeviceData.name,
+                    DeviceDetailActivity.EXTRAS_DEVICE_ADDRESS to bleDeviceData.address
+                )
+            )
+        }
 
-                    activity?.startActivity(
-                        activity?.intentFor<DeviceDetailActivity>(
-                            DeviceDetailActivity.EXTRAS_DEVICE_NAME to rowModel.name,
-                            DeviceDetailActivity.EXTRAS_DEVICE_ADDRESS to rowModel.address
-                        )
-                    )
-                }
-            })
+        adapter.setOnItemClicked { _, bleDeviceData ->
+            viewModel.stopDeviceScan()
+
+            activity?.startActivity(
+                activity?.intentFor<DeviceDetailActivity>(
+                    DeviceDetailActivity.EXTRAS_DEVICE_NAME to bleDeviceData.name,
+                    DeviceDetailActivity.EXTRAS_DEVICE_ADDRESS to bleDeviceData.address
+                )
+            )
+        }
 
         val recyclerView = binding.deviceListRecyclerView
         recyclerView.adapter = adapter

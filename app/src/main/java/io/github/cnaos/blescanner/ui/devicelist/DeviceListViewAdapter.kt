@@ -9,11 +9,11 @@ import androidx.recyclerview.widget.RecyclerView
 import io.github.cnaos.blescanner.databinding.RecyclerviewItemBinding
 
 class DeviceListViewAdapter(
-    context: Context,
-    private val listener: ListRowClickListener
+    context: Context
 ) :
     ListAdapter<BleDeviceData, DeviceListViewAdapter.BindingHolder>(BleDeviceData.ITEM_CALLBACK) {
 
+    private var listener: ((View, BleDeviceData) -> Unit)? = null
     private val mInflater: LayoutInflater = LayoutInflater.from(context)
 
     class BindingHolder(
@@ -28,14 +28,13 @@ class DeviceListViewAdapter(
     override fun onBindViewHolder(bindingHolder: BindingHolder, position: Int) {
         val current = getItem(position)
         bindingHolder.itemView.setOnClickListener {
-            listener.onClickRow(it, current)
+            this.listener?.invoke(it, current)
         }
         bindingHolder.binding.bleDevice = current
     }
 
-    interface ListRowClickListener {
-        fun onClickRow(tappedView: View, rowModel: BleDeviceData)
+    fun setOnItemClicked(listener: (tappedView: View, rowModel: BleDeviceData) -> Unit) {
+        this.listener = listener
     }
-
 }
 
