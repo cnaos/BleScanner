@@ -93,6 +93,7 @@ class DeviceDetailActivity : AppCompatActivity() {
                 return true
             }
             android.R.id.home -> {
+                viewModel.disconnect()
                 onBackPressed()
                 return true
             }

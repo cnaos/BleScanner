@@ -14,10 +14,7 @@ import io.github.cnaos.blescanner.gatt.generic.GattGenericUUIDConstants
 import io.github.cnaos.blescanner.gattmodel.GattDeviceModel
 import io.github.cnaos.blescanner.gattmodel.MyGattRawData
 import io.github.cnaos.blescanner.gattmodel.MyGattStringData
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import org.jetbrains.anko.AnkoLogger
 import org.jetbrains.anko.error
 import org.jetbrains.anko.verbose
@@ -49,6 +46,8 @@ class DeviceDetailViewModel(application: Application) : AndroidViewModel(applica
         GattDeviceModel(listOf())
     )
 
+    private var mGatt: Gatt? = null
+
     private val job = Job()
     override val coroutineContext: CoroutineContext
         get() = job + Dispatchers.Main
@@ -58,8 +57,14 @@ class DeviceDetailViewModel(application: Application) : AndroidViewModel(applica
     }
 
     fun disconnect() {
-        job.cancel()
-        connectionState.value = ConnectionState.DISCONNECTED
+        val tmpGatt = mGatt ?: return
+
+        if (tmpGatt.isActive) {
+            launch {
+                tmpGatt.disconnect()
+                connectionState.value = ConnectionState.DISCONNECTED
+            }
+        }
     }
 
     fun scanServices(): Boolean {
@@ -73,6 +78,7 @@ class DeviceDetailViewModel(application: Application) : AndroidViewModel(applica
             warn("Device not found.  Unable to scanServices.")
             return false
         }
+
 
         launch {
             // If ViewModel is destroyed during connection attempt, then `result` will contain
@@ -92,6 +98,7 @@ class DeviceDetailViewModel(application: Application) : AndroidViewModel(applica
                     }
                     is ConnectGattResult.Failure -> {
                         connectionState.value = ConnectionState.FAILED
+                        error("Gatt Connect failed. result=$result")
                         return@launch
                     }
                     else -> {
@@ -100,42 +107,48 @@ class DeviceDetailViewModel(application: Application) : AndroidViewModel(applica
                 }
             }
 
-            if (gatt.discoverServices() != BluetoothGatt.GATT_SUCCESS) {
-                // discover services failed
-                warn("discover GATT services failed")
-                return@launch
-            }
+            mGatt = gatt
 
-            val gattModel =
-                GattDeviceModel(gatt.services)
-            bindGattModel.value = gattModel
+            gatt.use { gattHandler ->
+                if (gattHandler.discoverServices() != BluetoothGatt.GATT_SUCCESS) {
+                    // discover services failed
+                    warn("discover GATT services failed")
+                    return@launch
+                }
 
-
-            // デバイス名取得
-            val deviceNameCharacteristicUUID =
-                UUID.fromString(GattGenericAccessUUID.DeviceName.uuid)
-
-            val deviceNameCharacteristic =
-                gattModel.gattCharacteristicsMap[deviceNameCharacteristicUUID.toString()]
-
-            val result = gatt.readCharacteristic(deviceNameCharacteristic!!)
-            if (result.status == BluetoothGatt.GATT_SUCCESS) {
-                val data =
-                    MyGattStringData(deviceNameCharacteristicUUID.toString(), String(result.value))
-                gattModel.gattDeviceName = data.data
-                verbose("GATT device Name = ${data.data}")
+                val gattModel =
+                    GattDeviceModel(gattHandler.services)
                 bindGattModel.value = gattModel
+
+
+                // デバイス名取得
+                val deviceNameCharacteristicUUID =
+                    UUID.fromString(GattGenericAccessUUID.DeviceName.uuid)
+
+                val deviceNameCharacteristic =
+                    gattModel.gattCharacteristicsMap[deviceNameCharacteristicUUID.toString()]
+
+                val result = gattHandler.readCharacteristic(deviceNameCharacteristic!!)
+                if (result.status == BluetoothGatt.GATT_SUCCESS) {
+                    val data =
+                        MyGattStringData(
+                            deviceNameCharacteristicUUID.toString(),
+                            String(result.value)
+                        )
+                    gattModel.gattDeviceName = data.data
+                    verbose("GATT device Name = ${data.data}")
+                    bindGattModel.value = gattModel
+                }
+
+                // 全データの読み込み
+                readGattCharacteristics(
+                    gattHandler, gattModel,
+                    gattModel.gattCharacteristicsMap.values.toList()
+                )
+
+                gattHandler.disconnect()
+                connectionState.value = ConnectionState.DISCONNECTED
             }
-
-            // 全データの読み込み
-            readGattCharacteristics(
-                gatt, gattModel,
-                gattModel.gattCharacteristicsMap.values.toList()
-            )
-
-            gatt.disconnect()
-            connectionState.value = ConnectionState.DISCONNECTED
-            gatt.close()
         }
 
         return true
