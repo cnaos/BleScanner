@@ -8,8 +8,8 @@ import androidx.lifecycle.MutableLiveData
 import com.juul.able.experimental.ConnectGattResult
 import com.juul.able.experimental.android.connectGatt
 import io.github.cnaos.blescanner.gatt.generic.GattGenericAccessUUID
-import io.github.cnaos.blescanner.gatt.model.MyGattStringData
 import io.github.cnaos.blescanner.gattmodel.GattDeviceModel
+import io.github.cnaos.blescanner.gattmodel.MyGattStringData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

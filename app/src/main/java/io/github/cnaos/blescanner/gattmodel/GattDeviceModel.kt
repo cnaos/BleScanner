@@ -3,7 +3,6 @@ package io.github.cnaos.blescanner.gattmodel
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattService
 import androidx.databinding.BaseObservable
-import io.github.cnaos.blescanner.gatt.model.AbstractGattData
 import java.util.*
 import kotlin.collections.ArrayList
 

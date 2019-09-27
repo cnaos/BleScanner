@@ -1,4 +1,4 @@
-package io.github.cnaos.blescanner.gatt.model
+package io.github.cnaos.blescanner.gattmodel
 
 class MyGattRawData(uuid: String, val rawData: ByteArray) : AbstractGattData(uuid) {
     override fun dataString(): String {
