@@ -3,18 +3,23 @@ package io.github.cnaos.blescanner.ui.devicedetail
 import android.app.Application
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothGatt
+import android.bluetooth.BluetoothGattCharacteristic
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import com.juul.able.experimental.ConnectGattResult
+import com.juul.able.experimental.Gatt
 import com.juul.able.experimental.android.connectGatt
 import io.github.cnaos.blescanner.gatt.generic.GattGenericAccessUUID
+import io.github.cnaos.blescanner.gatt.generic.GattGenericUUIDConstants
 import io.github.cnaos.blescanner.gattmodel.GattDeviceModel
+import io.github.cnaos.blescanner.gattmodel.MyGattRawData
 import io.github.cnaos.blescanner.gattmodel.MyGattStringData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.jetbrains.anko.AnkoLogger
+import org.jetbrains.anko.error
 import org.jetbrains.anko.verbose
 import org.jetbrains.anko.warn
 import java.util.*
@@ -122,6 +127,11 @@ class DeviceDetailViewModel(application: Application) : AndroidViewModel(applica
                 bindGattModel.value = gattModel
             }
 
+            // 全データの読み込み
+            readGattCharacteristics(
+                gatt, gattModel,
+                gattModel.gattCharacteristicsMap.values.toList()
+            )
 
             gatt.disconnect()
             connectionState.value = ConnectionState.DISCONNECTED
@@ -129,6 +139,34 @@ class DeviceDetailViewModel(application: Application) : AndroidViewModel(applica
         }
 
         return true
+    }
+
+    private suspend fun readGattCharacteristics(
+        gatt: Gatt,
+        gattModel: GattDeviceModel,
+        list: List<BluetoothGattCharacteristic>
+    ) {
+        list.forEach {
+            // 読み込み可能なものだけ処理する
+            if (it.properties and BluetoothGattCharacteristic.PROPERTY_READ == 0) {
+                verbose("skip read characteristics(${it.uuid})")
+                return@forEach
+            }
+
+            try {
+                val readResult = gatt.readCharacteristic(it)
+                val data =
+                    if (GattGenericUUIDConstants.isStringCharacteristic(it.uuid.toString())) {
+                        MyGattStringData(it.uuid.toString(), String(readResult.value))
+                    } else {
+                        MyGattRawData(it.uuid.toString(), readResult.value)
+                    }
+
+                gattModel.characteristicDataMap[it.uuid.toString()] = data
+            } catch (e: Exception) {
+                error("GATT read Characteristic error.", e)
+            }
+        }
     }
 
 }

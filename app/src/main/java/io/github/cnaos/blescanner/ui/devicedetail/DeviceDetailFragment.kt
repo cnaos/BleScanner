@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ExpandableListView
 import android.widget.ImageView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -20,6 +21,9 @@ class DeviceDetailFragment : Fragment() {
 
     private val viewModel: DeviceDetailViewModel by activityViewModels()
     private lateinit var binding: DeviceDetailFragmentBinding
+
+    private lateinit var mExpandableListViewAdapter: ExpandableListViewAdapter
+    private lateinit var mExpandableListView: ExpandableListView
 
 
     override fun onCreateView(
@@ -48,6 +52,19 @@ class DeviceDetailFragment : Fragment() {
                 }
             }
         })
+
+        mExpandableListViewAdapter = ExpandableListViewAdapter(inflater)
+
+        with(binding.root) {
+            mExpandableListView = findViewById(R.id.gatt_services_list)
+            mExpandableListView.setAdapter(mExpandableListViewAdapter)
+        }
+
+        viewModel.bindGattModel.observe(this, Observer {
+            mExpandableListViewAdapter.model = it
+            mExpandableListViewAdapter.notifyDataSetChanged()
+        })
+
 
         return binding.root
     }
