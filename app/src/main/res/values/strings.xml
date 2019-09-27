@@ -4,7 +4,7 @@
     <string name="stop">Stop</string>
     <string name="connect">Connect</string>
     <string name="disconnect">Disconnect</string>
-    <string name="label_device_address">Device Address</string>
-    <string name="label_gatt_device_name">Device Name</string>
-    <string name="label_connection_state">Connection State</string>
+    <string name="label_device_address">Device Address:</string>
+    <string name="label_gatt_device_name">Device Name:</string>
+    <string name="label_connection_state">Connection State:</string>
 </resources>
