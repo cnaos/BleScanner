@@ -1,12 +1,17 @@
 package io.github.cnaos.blescanner.ui.devicelist
 
-import androidx.lifecycle.ViewModelProviders
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import io.github.cnaos.blescanner.R
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Observer
+import androidx.recyclerview.widget.DividerItemDecoration
+import androidx.recyclerview.widget.LinearLayoutManager
+import io.github.cnaos.blescanner.databinding.DeviceListFragmentBinding
+
+
 
 class DeviceListFragment : Fragment() {
 
@@ -14,19 +19,34 @@ class DeviceListFragment : Fragment() {
         fun newInstance() = DeviceListFragment()
     }
 
-    private lateinit var viewModel: DeviceListViewModel
+    private val viewModel: DeviceListViewModel by activityViewModels()
+    private lateinit var binding: DeviceListFragmentBinding
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        return inflater.inflate(R.layout.device_list_fragment, container, false)
+        binding = DeviceListFragmentBinding.inflate(inflater, container, false)
+        binding.lifecycleOwner = viewLifecycleOwner
+        binding.viewModel = viewModel
+
+        return binding.root
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
-        viewModel = ViewModelProviders.of(this).get(DeviceListViewModel::class.java)
-        // TODO: Use the ViewModel
+
+        val adapter = DeviceListViewAdapter(context!!)
+        val recyclerView = binding.deviceListRecyclerView
+
+        recyclerView.adapter = adapter
+        recyclerView.layoutManager = LinearLayoutManager(context!!)
+        val itemDecoration = DividerItemDecoration(context!!, DividerItemDecoration.VERTICAL)
+        recyclerView.addItemDecoration(itemDecoration)
+
+        viewModel.bleDeviceDataList.observe(viewLifecycleOwner, Observer {
+            adapter.updateDeviceList(it)
+        })
     }
 
 }
