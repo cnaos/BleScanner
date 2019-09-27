@@ -18,7 +18,7 @@ import org.jetbrains.anko.verbose
 import org.jetbrains.anko.warn
 import java.util.concurrent.TimeUnit
 
-class DeviceListViewModel : ViewModel(),AnkoLogger {
+class DeviceListViewModel : ViewModel(), AnkoLogger {
     // 定数
     companion object {
         private val SCAN_PERIOD: Long =

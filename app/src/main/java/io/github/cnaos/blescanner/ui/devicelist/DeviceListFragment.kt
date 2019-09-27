@@ -9,8 +9,9 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
+import io.github.cnaos.blescanner.DeviceDetailActivity
 import io.github.cnaos.blescanner.databinding.DeviceListFragmentBinding
-
+import org.jetbrains.anko.intentFor
 
 
 class DeviceListFragment : Fragment() {
@@ -36,7 +37,22 @@ class DeviceListFragment : Fragment() {
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
-        val adapter = DeviceListViewAdapter(context!!)
+
+        val adapter =
+            DeviceListViewAdapter(context!!, object : DeviceListViewAdapter.ListRowClickListener {
+                override fun onClickRow(tappedView: View, rowModel: BleDeviceData) {
+                    // クリックされたアイテムの取得
+                    viewModel.stopDeviceScan()
+
+                    activity?.startActivity(
+                        activity?.intentFor<DeviceDetailActivity>(
+                            DeviceDetailActivity.EXTRAS_DEVICE_NAME to rowModel.name,
+                            DeviceDetailActivity.EXTRAS_DEVICE_ADDRESS to rowModel.address
+                        )
+                    )
+                }
+            })
+
         val recyclerView = binding.deviceListRecyclerView
         recyclerView.adapter = adapter
 
