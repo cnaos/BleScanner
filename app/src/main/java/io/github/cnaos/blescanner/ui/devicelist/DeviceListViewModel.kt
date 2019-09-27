@@ -63,18 +63,19 @@ class DeviceListViewModel : ViewModel(),AnkoLogger {
         }
     }
 
+    @Synchronized
     private fun addDevice(device: BluetoothDevice?) {
         device ?: return
 
         val tmpList = deviceList.value
         tmpList ?: return
 
-        if (!tmpList.contains(device)) {
-            tmpList.add(device)
+        if (tmpList.contains(device)) {
+            return
         }
 
+        tmpList.add(device)
         tmpList.sortWith(bleDeviceComparator)
-
         deviceList.postValue(tmpList)
     }
 

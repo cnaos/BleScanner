@@ -37,9 +37,10 @@ class DeviceListFragment : Fragment() {
         super.onActivityCreated(savedInstanceState)
 
         val adapter = DeviceListViewAdapter(context!!)
-        val recyclerView = binding.deviceListRecyclerView
 
+        val recyclerView = binding.deviceListRecyclerView
         recyclerView.adapter = adapter
+
         recyclerView.layoutManager = LinearLayoutManager(context!!)
         val itemDecoration = DividerItemDecoration(context!!, DividerItemDecoration.VERTICAL)
         recyclerView.addItemDecoration(itemDecoration)
