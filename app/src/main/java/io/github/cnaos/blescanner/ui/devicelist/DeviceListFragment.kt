@@ -37,7 +37,6 @@ class DeviceListFragment : Fragment() {
         super.onActivityCreated(savedInstanceState)
 
         val adapter = DeviceListViewAdapter(context!!)
-
         val recyclerView = binding.deviceListRecyclerView
         recyclerView.adapter = adapter
 
@@ -46,7 +45,7 @@ class DeviceListFragment : Fragment() {
         recyclerView.addItemDecoration(itemDecoration)
 
         viewModel.bleDeviceDataList.observe(viewLifecycleOwner, Observer {
-            adapter.updateDeviceList(it)
+            adapter.submitList(it)
         })
     }
 
