@@ -2,9 +2,9 @@
 
 ## これは何？
 
-![BleScanner](https://github.com/cnaos/picture/raw/master/BleScanner/device_list.png)
+<img src="https://github.com/cnaos/picture/raw/master/BleScanner/device_list.png" witdh="50%"/>
 
-![BleScanner](https://github.com/cnaos/picture/raw/master/BleScanner/device_detail.png)
+<img src="https://github.com/cnaos/picture/raw/master/BleScanner/device_detail.png" witdh="50%"/>
 
 googleの[Android BluetoothLeGatt Sample](https://github.com/android/connectivity-samples/tree/master/BluetoothLeGatt)をベースに、
 以下のライブラリを組み込んでみたサンプルです。
