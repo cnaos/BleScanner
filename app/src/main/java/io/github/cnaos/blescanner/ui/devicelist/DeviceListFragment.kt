@@ -49,17 +49,6 @@ class DeviceListFragment : Fragment() {
             )
         }
 
-        adapter.setOnItemClicked { _, bleDeviceData ->
-            viewModel.stopDeviceScan()
-
-            activity?.startActivity(
-                activity?.intentFor<DeviceDetailActivity>(
-                    DeviceDetailActivity.EXTRAS_DEVICE_NAME to bleDeviceData.name,
-                    DeviceDetailActivity.EXTRAS_DEVICE_ADDRESS to bleDeviceData.address
-                )
-            )
-        }
-
         val recyclerView = binding.deviceListRecyclerView
         recyclerView.adapter = adapter
 
