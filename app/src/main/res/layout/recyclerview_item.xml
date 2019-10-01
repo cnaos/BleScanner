@@ -56,7 +56,7 @@
                 android:id="@+id/textview_devicename"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@{bleDevice.name}"
+                android:text="@{bleDevice.displayName}"
                 android:textSize="18sp" />
         </LinearLayout>
 

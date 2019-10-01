@@ -8,9 +8,7 @@ import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.os.Handler
-import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.Transformations
 import androidx.lifecycle.ViewModel
 import com.markodevcic.peko.PermissionsLiveData
 import org.jetbrains.anko.AnkoLogger
@@ -25,17 +23,12 @@ class DeviceListViewModel : ViewModel(), AnkoLogger {
             TimeUnit.MILLISECONDS.convert(20, TimeUnit.SECONDS)// スキャン時間
     }
 
-    private val deviceList = MutableLiveData<MutableList<BluetoothDevice>>(mutableListOf())
+    private val scannedDeviceSet = mutableSetOf<String>()
 
     /**
      * 表示用のデバイスリスト
      */
-    val bleDeviceDataList: LiveData<List<BleDeviceData>>
-        get() = Transformations.map(deviceList) {
-            it.map { bluetoothDevice ->
-                BleDeviceData(bluetoothDevice.name ?: "Unknown", bluetoothDevice.address)
-            }.toList()
-        }
+    val bleDeviceDataList = MutableLiveData<MutableList<BleDeviceData>>(mutableListOf())
 
     val scanning = MutableLiveData<Boolean>(false)
     lateinit var bluetoothAdapter: BluetoothAdapter
@@ -45,7 +38,7 @@ class DeviceListViewModel : ViewModel(), AnkoLogger {
     private val handler: Handler = Handler()
 
     private val bleDeviceComparator =
-        compareBy<BluetoothDevice, String?>(nullsLast())
+        compareBy<BleDeviceData, String?>(nullsLast())
         { it.name }
             .thenBy { it.address }
 
@@ -67,16 +60,17 @@ class DeviceListViewModel : ViewModel(), AnkoLogger {
     private fun addDevice(device: BluetoothDevice?) {
         device ?: return
 
-        val tmpList = deviceList.value
-        tmpList ?: return
-
-        if (tmpList.contains(device)) {
+        if (scannedDeviceSet.contains(device.address)) {
             return
         }
+        scannedDeviceSet.add(device.address)
 
-        tmpList.add(device)
-        tmpList.sortWith(bleDeviceComparator)
-        deviceList.postValue(tmpList)
+        val tmpBleDeviceData = BleDeviceData(device.name, device.address)
+
+        val tmpList = bleDeviceDataList.value
+        tmpList?.add(tmpBleDeviceData)
+        tmpList?.sortWith(bleDeviceComparator)
+        bleDeviceDataList.value = tmpList
     }
 
     fun startDeviceScan() {

@@ -58,6 +58,8 @@ class DeviceListFragment : Fragment() {
 
         viewModel.bleDeviceDataList.observe(viewLifecycleOwner, Observer {
             adapter.submitList(it)
+            // なんかリストのインスタンスが同じだとリフレッシュしてやらないとだめっぽい
+            adapter.notifyDataSetChanged()
         })
     }
 
