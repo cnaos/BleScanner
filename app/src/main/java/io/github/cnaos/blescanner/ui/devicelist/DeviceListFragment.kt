@@ -11,10 +11,21 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import io.github.cnaos.blescanner.DeviceDetailActivity
 import io.github.cnaos.blescanner.databinding.DeviceListFragmentBinding
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.launch
+import org.jetbrains.anko.AnkoLogger
+import org.jetbrains.anko.info
 import org.jetbrains.anko.intentFor
+import kotlin.coroutines.CoroutineContext
 
 
-class DeviceListFragment : Fragment() {
+class DeviceListFragment : Fragment(), CoroutineScope, AnkoLogger {
+    private var mJob = Job()
+    override val coroutineContext: CoroutineContext
+        get() = mJob + Dispatchers.Main
 
     companion object {
         fun newInstance() = DeviceListFragment()
@@ -22,6 +33,7 @@ class DeviceListFragment : Fragment() {
 
     private val viewModel: DeviceListViewModel by activityViewModels()
     private lateinit var binding: DeviceListFragmentBinding
+    private val uiScope = UiLifecycleScope()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -30,6 +42,8 @@ class DeviceListFragment : Fragment() {
         binding = DeviceListFragmentBinding.inflate(inflater, container, false)
         binding.lifecycleOwner = viewLifecycleOwner
         binding.viewModel = viewModel
+
+        lifecycle.addObserver(uiScope)
 
         return binding.root
     }
@@ -61,6 +75,12 @@ class DeviceListFragment : Fragment() {
             // なんかリストのインスタンスが同じだとリフレッシュしてやらないとだめっぽい
             adapter.notifyDataSetChanged()
         })
+
+        launch {
+            viewModel.deviceChannel.consumeEach {
+                info("receive: ${it}")
+            }
+        }
     }
 
 }
