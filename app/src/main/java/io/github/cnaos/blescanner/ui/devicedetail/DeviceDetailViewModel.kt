@@ -9,6 +9,7 @@ import androidx.lifecycle.MutableLiveData
 import com.juul.able.experimental.ConnectGattResult
 import com.juul.able.experimental.Gatt
 import com.juul.able.experimental.android.connectGatt
+import io.github.cnaos.blescanner.gatt.generic.GattDeviceInformationUUID
 import io.github.cnaos.blescanner.gatt.generic.GattGenericAccessUUID
 import io.github.cnaos.blescanner.gatt.generic.GattGenericUUIDConstants
 import io.github.cnaos.blescanner.gattmodel.GattDeviceModel
@@ -140,10 +141,17 @@ class DeviceDetailViewModel(application: Application) : AndroidViewModel(applica
                     bindGattModel.value = gattModel
                 }
 
-                // 全データの読み込み
+                // Gatt Generic AccessとDeviceInformationのみcharacteristicを取得する
+                val list =
+                    gattModel.serviceToCharacteristicsMap[GattGenericAccessUUID.uuid] ?: emptyList()
+
+                val list2 =
+                    gattModel.serviceToCharacteristicsMap[GattDeviceInformationUUID.uuid]
+                        ?: emptyList()
+
                 readGattCharacteristics(
                     gattHandler, gattModel,
-                    gattModel.gattCharacteristicsMap.values.toList()
+                    list + list2
                 )
 
                 gattHandler.disconnect()
