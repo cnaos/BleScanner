@@ -16,9 +16,12 @@ import androidx.lifecycle.Observer
 import com.markodevcic.peko.PermissionResult
 import io.github.cnaos.blescanner.ui.devicelist.DeviceListFragment
 import io.github.cnaos.blescanner.ui.devicelist.DeviceListViewModel
-import org.jetbrains.anko.*
+import org.jetbrains.anko.alert
+import org.jetbrains.anko.okButton
+import org.jetbrains.anko.toast
+import timber.log.Timber
 
-class DeviceListActivity : AppCompatActivity(), AnkoLogger {
+class DeviceListActivity : AppCompatActivity() {
     // 定数
     companion object {
         private const val REQUEST_ENABLE_BLUETOOTH = 1 // Bluetooth機能の有効化要求時の識別コード
@@ -51,14 +54,14 @@ class DeviceListActivity : AppCompatActivity(), AnkoLogger {
 
         // スキャン状態が変わったらメニューを更新する
         viewModel.scanning.observe(this, Observer {
-            verbose("refresh menu")
+            Timber.v("refresh menu")
             invalidateOptionsMenu()
         })
     }
 
     private fun setupProcessPermissionResult() {
         viewModel.permissionLiveData.observe(this, Observer { result: PermissionResult ->
-            verbose("process PermissionResult: $result")
+            Timber.v("process PermissionResult: $result")
 
             when (result) {
                 is PermissionResult.Granted -> {

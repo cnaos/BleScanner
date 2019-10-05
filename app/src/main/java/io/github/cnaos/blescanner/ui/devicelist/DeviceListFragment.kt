@@ -14,12 +14,11 @@ import io.github.cnaos.blescanner.databinding.DeviceListFragmentBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import org.jetbrains.anko.AnkoLogger
 import org.jetbrains.anko.intentFor
 import kotlin.coroutines.CoroutineContext
 
 
-class DeviceListFragment : Fragment(), CoroutineScope, AnkoLogger {
+class DeviceListFragment : Fragment(), CoroutineScope {
     private var mJob = Job()
     override val coroutineContext: CoroutineContext
         get() = mJob + Dispatchers.Main

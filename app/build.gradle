@@ -41,6 +41,8 @@ dependencies {
     implementation "com.juul.able:core:0.7.1"
     implementation 'com.markodevcic.peko:peko:2.0.0'
 
+    implementation 'com.jakewharton.timber:timber:4.7.1'
+
     implementation 'com.github.lelloman:android-identicons:v11'
 
     debugImplementation 'com.squareup.leakcanary:leakcanary-android:2.0-beta-3'

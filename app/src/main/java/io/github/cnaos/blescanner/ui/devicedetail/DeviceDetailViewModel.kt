@@ -16,15 +16,12 @@ import io.github.cnaos.blescanner.gattmodel.GattDeviceModel
 import io.github.cnaos.blescanner.gattmodel.MyGattRawData
 import io.github.cnaos.blescanner.gattmodel.MyGattStringData
 import kotlinx.coroutines.*
-import org.jetbrains.anko.AnkoLogger
-import org.jetbrains.anko.error
-import org.jetbrains.anko.verbose
-import org.jetbrains.anko.warn
+import timber.log.Timber
 import java.util.*
 import kotlin.coroutines.CoroutineContext
 
 class DeviceDetailViewModel(application: Application) : AndroidViewModel(application),
-    CoroutineScope, AnkoLogger {
+    CoroutineScope {
 
     lateinit var deviceName: String
     lateinit var deviceAddress: String
@@ -70,13 +67,13 @@ class DeviceDetailViewModel(application: Application) : AndroidViewModel(applica
 
     fun scanServices(): Boolean {
         if (deviceAddress.isBlank()) {
-            warn("unspecified ble device address.")
+            Timber.w("unspecified ble device address.")
             return false
         }
 
         val device = bluetoothAdapter.getRemoteDevice(deviceAddress)
         if (device == null) {
-            warn("Device not found.  Unable to scanServices.")
+            Timber.w("Device not found.  Unable to scanServices.")
             return false
         }
 
@@ -113,7 +110,7 @@ class DeviceDetailViewModel(application: Application) : AndroidViewModel(applica
             gatt.use { gattHandler ->
                 if (gattHandler.discoverServices() != BluetoothGatt.GATT_SUCCESS) {
                     // discover services failed
-                    warn("discover GATT services failed")
+                    Timber.w("discover GATT services failed")
                     return@launch
                 }
 
@@ -137,7 +134,7 @@ class DeviceDetailViewModel(application: Application) : AndroidViewModel(applica
                             String(result.value)
                         )
                     gattModel.gattDeviceName = data.data
-                    verbose("GATT device Name = ${data.data}")
+                    Timber.v("GATT device Name = ${data.data}")
                     bindGattModel.value = gattModel
                 }
 
@@ -170,7 +167,7 @@ class DeviceDetailViewModel(application: Application) : AndroidViewModel(applica
         list.forEach {
             // 読み込み可能なものだけ処理する
             if (it.properties and BluetoothGattCharacteristic.PROPERTY_READ == 0) {
-                verbose("skip read characteristics(${it.uuid})")
+                Timber.v("skip read characteristics(${it.uuid})")
                 return@forEach
             }
 
@@ -185,7 +182,7 @@ class DeviceDetailViewModel(application: Application) : AndroidViewModel(applica
 
                 gattModel.characteristicDataMap[it.uuid.toString()] = data
             } catch (e: Exception) {
-                error("GATT read Characteristic error.", e)
+                Timber.e("GATT read Characteristic error.", e)
             }
         }
     }

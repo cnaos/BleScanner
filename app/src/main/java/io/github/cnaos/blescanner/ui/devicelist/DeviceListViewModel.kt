@@ -17,15 +17,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-import org.jetbrains.anko.AnkoLogger
-import org.jetbrains.anko.info
-import org.jetbrains.anko.verbose
-import org.jetbrains.anko.warn
+import timber.log.Timber
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
-class DeviceListViewModel(application: Application) : AndroidViewModel(application),
-    AnkoLogger {
+class DeviceListViewModel(application: Application) : AndroidViewModel(application) {
     // 定数
     companion object {
         private val SCAN_PERIOD: Long =
@@ -52,7 +48,7 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
             .thenBy { it.address }
 
 
-    fun log(msg: String) = info("[${Thread.currentThread().name}] $msg")
+    fun log(msg: String) = Timber.v("[${Thread.currentThread().name}] $msg")
 
     fun deviceScanFlow(
         scanner: BluetoothLeScanner,
@@ -104,7 +100,7 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
 
 
     fun startDeviceScan() {
-        verbose("startDeviceScan")
+        Timber.v("startDeviceScan")
 
         if (!isGrantedBLEPermission) {
             permissionLiveData.checkPermissions(Manifest.permission.ACCESS_COARSE_LOCATION)
@@ -114,7 +110,7 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
         // BluetoothLeScannerの取得
         val scanner = bluetoothAdapter.bluetoothLeScanner
         if (scanner == null) {
-            warn("No BluetoothLeScanner available. Is Bluetooth turned on?")
+            Timber.w("No BluetoothLeScanner available. Is Bluetooth turned on?")
             return
         }
 
@@ -136,7 +132,7 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun stopDeviceScan() {
-        verbose("stopDeviceScan")
+        Timber.v("stopDeviceScan")
         scanning.postValue(false)
         scanJob.cancel()
     }
