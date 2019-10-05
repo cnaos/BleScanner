@@ -6,6 +6,7 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
 import com.juul.able.experimental.ConnectGattResult
 import com.juul.able.experimental.Gatt
 import com.juul.able.experimental.android.connectGatt
@@ -15,13 +16,13 @@ import io.github.cnaos.blescanner.gatt.generic.GattGenericUUIDConstants
 import io.github.cnaos.blescanner.gattmodel.GattDeviceModel
 import io.github.cnaos.blescanner.gattmodel.MyGattRawData
 import io.github.cnaos.blescanner.gattmodel.MyGattStringData
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.*
-import kotlin.coroutines.CoroutineContext
 
-class DeviceDetailViewModel(application: Application) : AndroidViewModel(application),
-    CoroutineScope {
+class DeviceDetailViewModel(application: Application) : AndroidViewModel(application) {
 
     lateinit var deviceName: String
     lateinit var deviceAddress: String
@@ -44,26 +45,23 @@ class DeviceDetailViewModel(application: Application) : AndroidViewModel(applica
         GattDeviceModel(listOf())
     )
 
+    val errorMessage: MutableLiveData<String> = MutableLiveData("")
+
     private var mGatt: Gatt? = null
 
-    private val job = Job()
-    override val coroutineContext: CoroutineContext
-        get() = job + Dispatchers.Main
-
-    override fun onCleared() {
-        job.cancel()
-    }
 
     fun disconnect() {
         val tmpGatt = mGatt ?: return
 
         if (tmpGatt.isActive) {
-            launch {
+            viewModelScope.launch {
                 tmpGatt.disconnect()
-                connectionState.value = ConnectionState.DISCONNECTED
+                connectionState.postValue(ConnectionState.DISCONNECTED)
             }
         }
     }
+
+    fun log(msg: String) = Timber.v("[${Thread.currentThread().name}] $msg")
 
     fun scanServices(): Boolean {
         if (deviceAddress.isBlank()) {
@@ -77,26 +75,27 @@ class DeviceDetailViewModel(application: Application) : AndroidViewModel(applica
             return false
         }
 
-
-        launch {
+        viewModelScope.launch(Dispatchers.IO) {
             // If ViewModel is destroyed during connection attempt, then `result` will contain
             // `ConnectGattResult.Canceled`.
-            connectionState.value = ConnectionState.CONNECTING
+            connectionState.postValue(ConnectionState.CONNECTING)
             //val gattResult = device.connectGatt(getApplication<Application>(), autoConnect = false)
-
+            log("connecting: $deviceAddress")
             val gatt = device.connectGatt(getApplication(), autoConnect = false).let { result ->
                 when (result) {
                     is ConnectGattResult.Success -> {
-                        connectionState.value = ConnectionState.CONNECTED
+                        connectionState.postValue(ConnectionState.CONNECTED)
                         result.gatt
                     }
                     is ConnectGattResult.Canceled -> {
-                        connectionState.value = ConnectionState.DISCONNECTED
+                        connectionState.postValue(ConnectionState.DISCONNECTED)
                         return@launch
                     }
                     is ConnectGattResult.Failure -> {
-                        connectionState.value = ConnectionState.FAILED
-                        error("Gatt Connect failed. result=$result")
+                        connectionState.postValue(ConnectionState.FAILED)
+                        val errorMsg = "Gatt Connect failed. deivce address=${deviceAddress}"
+                        Timber.e(errorMsg)
+                        errorMessage.postValue(errorMsg)
                         return@launch
                     }
                     else -> {
@@ -104,6 +103,7 @@ class DeviceDetailViewModel(application: Application) : AndroidViewModel(applica
                     }
                 }
             }
+            log("connected: $deviceAddress")
 
             mGatt = gatt
 
@@ -116,7 +116,7 @@ class DeviceDetailViewModel(application: Application) : AndroidViewModel(applica
 
                 val gattModel =
                     GattDeviceModel(gattHandler.services)
-                bindGattModel.value = gattModel
+                bindGattModel.postValue(gattModel)
 
 
                 // デバイス名取得
@@ -134,8 +134,8 @@ class DeviceDetailViewModel(application: Application) : AndroidViewModel(applica
                             String(result.value)
                         )
                     gattModel.gattDeviceName = data.data
-                    Timber.v("GATT device Name = ${data.data}")
-                    bindGattModel.value = gattModel
+                    log("GATT device Name = ${data.data}")
+                    bindGattModel.postValue(gattModel)
                 }
 
                 // Gatt Generic AccessとDeviceInformationのみcharacteristicを取得する
@@ -151,8 +151,10 @@ class DeviceDetailViewModel(application: Application) : AndroidViewModel(applica
                     list + list2
                 )
 
+
+
                 gattHandler.disconnect()
-                connectionState.value = ConnectionState.DISCONNECTED
+                connectionState.postValue(ConnectionState.DISCONNECTED)
             }
         }
 

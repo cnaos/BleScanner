@@ -60,11 +60,10 @@ class DeviceDetailFragment : Fragment() {
             mExpandableListView.setAdapter(mExpandableListViewAdapter)
         }
 
-        viewModel.bindGattModel.observe(this, Observer {
+        viewModel.bindGattModel.observe(viewLifecycleOwner, Observer {
             mExpandableListViewAdapter.model = it
             mExpandableListViewAdapter.notifyDataSetChanged()
         })
-
 
         return binding.root
     }

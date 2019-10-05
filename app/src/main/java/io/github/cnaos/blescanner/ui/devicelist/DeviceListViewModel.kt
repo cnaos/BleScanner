@@ -114,7 +114,7 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
             return
         }
 
-        scanning.value = true
+        scanning.postValue(true)
         // BLEデバイスのスキャン開始
         val scanSettings = ScanSettings.Builder()
             .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)

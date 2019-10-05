@@ -11,6 +11,8 @@ import androidx.lifecycle.Observer
 import io.github.cnaos.blescanner.ui.devicedetail.DeviceDetailFragment
 import io.github.cnaos.blescanner.ui.devicedetail.DeviceDetailViewModel
 import io.github.cnaos.blescanner.ui.devicedetail.DeviceDetailViewModel.ConnectionState.*
+import org.jetbrains.anko.alert
+import org.jetbrains.anko.yesButton
 
 class DeviceDetailActivity : AppCompatActivity() {
     companion object {
@@ -45,6 +47,18 @@ class DeviceDetailActivity : AppCompatActivity() {
         viewModel.connectionState.observe(this, Observer {
             invalidateOptionsMenu()
         })
+
+        viewModel.errorMessage.observe(this, Observer {
+            if (it == null || it.isBlank()) {
+                return@Observer
+            }
+            alert("$it") {
+                title = "Error"
+                yesButton {}
+            }.show()
+        })
+
+
 
         viewModel.scanServices()
 
