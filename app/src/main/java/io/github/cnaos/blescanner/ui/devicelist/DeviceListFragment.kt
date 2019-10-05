@@ -29,7 +29,6 @@ class DeviceListFragment : Fragment(), CoroutineScope {
 
     private val viewModel: DeviceListViewModel by activityViewModels()
     private lateinit var binding: DeviceListFragmentBinding
-    private val uiScope = UiLifecycleScope()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -38,8 +37,6 @@ class DeviceListFragment : Fragment(), CoroutineScope {
         binding = DeviceListFragmentBinding.inflate(inflater, container, false)
         binding.lifecycleOwner = viewLifecycleOwner
         binding.viewModel = viewModel
-
-        lifecycle.addObserver(uiScope)
 
         return binding.root
     }
