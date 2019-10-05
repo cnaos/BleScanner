@@ -15,11 +15,10 @@ import com.markodevcic.peko.PermissionsLiveData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.launch
 import org.jetbrains.anko.AnkoLogger
 import org.jetbrains.anko.verbose
 import org.jetbrains.anko.warn
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.CoroutineContext
 
@@ -31,12 +30,12 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
             TimeUnit.MILLISECONDS.convert(20, TimeUnit.SECONDS)// スキャン時間
     }
 
-    private val scannedDeviceSet = mutableSetOf<String>()
+    private val scannedDeviceMap = ConcurrentHashMap<String, BleDeviceData>()
 
     /**
      * 表示用のデバイスリスト
      */
-    val bleDeviceDataList = MutableLiveData<MutableList<BleDeviceData>>(mutableListOf())
+    val bleDeviceDataList = MutableLiveData<List<BleDeviceData>>(listOf<BleDeviceData>())
 
     val scanning = MutableLiveData<Boolean>(false)
     lateinit var bluetoothAdapter: BluetoothAdapter
@@ -49,8 +48,6 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
         compareBy<BleDeviceData, String?>(nullsLast())
         { it.name }
             .thenBy { it.address }
-
-    val deviceChannel = Channel<BleDeviceData>(Channel.BUFFERED)
 
     private val job = Job()
     override val coroutineContext: CoroutineContext
@@ -77,26 +74,16 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
     @Synchronized
     private fun addDevice(device: BluetoothDevice?) {
         device ?: return
-
-        if (scannedDeviceSet.contains(device.address)) {
-            return
-        }
-        scannedDeviceSet.add(device.address)
-
         val tmpBleDeviceData = BleDeviceData(device.name, device.address)
 
-        val tmpList = bleDeviceDataList.value
-        tmpList?.add(tmpBleDeviceData)
-        tmpList?.sortWith(bleDeviceComparator)
-        bleDeviceDataList.value = tmpList
-
-        launch {
-            deviceChannel.send(tmpBleDeviceData)
+        if (scannedDeviceMap.putIfAbsent(device.address, tmpBleDeviceData) != null) {
+            return
         }
-        // TODO この処理を非同期でかつGATTの読み出しを逐次処理するようにしたい。
-        // TODO デバイスの名前がわかったら、ソートをかけ直したい
-        // readDeviceName(tmpBleDeviceData)
+
+        val tmpList = scannedDeviceMap.values.sortedWith(bleDeviceComparator)
+        bleDeviceDataList.value = tmpList
     }
+
 
     fun startDeviceScan() {
         verbose("startDeviceScan")
@@ -143,68 +130,72 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
     }
 
 
-//    fun readDeviceName(bleDeviceData: BleDeviceData){
+//    suspend fun readDeviceName(bleDeviceData: BleDeviceData){
 //        val device = bluetoothAdapter.getRemoteDevice(bleDeviceData.address)
 //        if (device == null) {
 //            warn("Device not found.  Unable to scanServices.")
 //            return
 //        }
 //
-//        launch {
-//            // If ViewModel is destroyed during connection attempt, then `result` will contain
-//            // `ConnectGattResult.Canceled`.
-//            //val gattResult = device.connectGatt(getApplication<Application>(), autoConnect = false)
-//
-//            val gatt = device.connectGatt(getApplication(), autoConnect = false).let { result ->
-//                when (result) {
-//                    is ConnectGattResult.Success -> {
-//                        result.gatt
-//                    }
-//                    is ConnectGattResult.Canceled -> {
-//                        return@launch
-//                    }
-//                    is ConnectGattResult.Failure -> {
-//                        error("Gatt Connect failed. result=$result")
-//                        return@launch
-//                    }
-//                    else -> {
-//                        throw IllegalStateException("unknown GattResult. result=$result")
-//                    }
+//        // If ViewModel is destroyed during connection attempt, then `result` will contain
+//        // `ConnectGattResult.Canceled`.
+//        //val gattResult = device.connectGatt(getApplication<Application>(), autoConnect = false)
+//        log("actor connecting: $bleDeviceData")
+//        val gatt = device.connectGatt(getApplication(), autoConnect = false).let { result ->
+//            when (result) {
+//                is ConnectGattResult.Success -> {
+//                    result.gatt
 //                }
-//            }
-//
-//            gatt.use { gattHandler ->
-//                if (gattHandler.discoverServices() != BluetoothGatt.GATT_SUCCESS) {
-//                    // discover services failed
-//                    warn("discover GATT services failed")
-//                    return@launch
+//                is ConnectGattResult.Canceled -> {
+//                    return
 //                }
-//
-//                val gattModel =
-//                    GattDeviceModel(gattHandler.services)
-//
-//                // デバイス名取得
-//                val deviceNameCharacteristicUUID =
-//                    UUID.fromString(GattGenericAccessUUID.DeviceName.uuid)
-//
-//                val deviceNameCharacteristic =
-//                    gattModel.gattCharacteristicsMap[deviceNameCharacteristicUUID.toString()]
-//
-//                val result = gattHandler.readCharacteristic(deviceNameCharacteristic!!)
-//                if (result.status == BluetoothGatt.GATT_SUCCESS) {
-//                    val data =
-//                        MyGattStringData(
-//                            deviceNameCharacteristicUUID.toString(),
-//                            String(result.value)
-//                        )
-//                    gattModel.gattDeviceName = data.data
-//                    bleDeviceData.name=data.data
-//                    info("GATT device Name = ${data.data}")
+//                is ConnectGattResult.Failure -> {
+//                    warn("Gatt Connect failed. result=$result")
+//                    return
 //                }
-//
-//                gattHandler.disconnect()
+//                else -> {
+//                    throw IllegalStateException("unknown GattResult. result=$result")
+//                }
 //            }
 //        }
 //
+//        log("actor connected: $bleDeviceData")
+//
+//        gatt.use { gattHandler ->
+//            if (gattHandler.discoverServices() != BluetoothGatt.GATT_SUCCESS) {
+//                // discover services failed
+//                warn("discover GATT services failed")
+//                return
+//            }
+//
+//            val gattModel =
+//                GattDeviceModel(gattHandler.services)
+//
+//            // デバイス名取得
+//            val deviceNameCharacteristicUUID =
+//                UUID.fromString(GattGenericAccessUUID.DeviceName.uuid)
+//
+//            val deviceNameCharacteristic =
+//                gattModel.gattCharacteristicsMap[deviceNameCharacteristicUUID.toString()]
+//
+//            log("actor reading: $bleDeviceData")
+//            val result = gattHandler.readCharacteristic(deviceNameCharacteristic!!)
+//            log("actor read: result=$result")
+//            if (result.status == BluetoothGatt.GATT_SUCCESS) {
+//                val data =
+//                    MyGattStringData(
+//                        deviceNameCharacteristicUUID.toString(),
+//                        String(result.value)
+//                    )
+//                gattModel.gattDeviceName = data.data
+//                bleDeviceData.name = data.data
+//                log("actor: GATT device Name = ${data.data}")
+//                launch(Dispatchers.Main) {
+//                    deviceReadingCount.value = deviceChannel.count
+//                }
+//            }
+//
+//            gattHandler.disconnect()
+//        }
 //    }
 }

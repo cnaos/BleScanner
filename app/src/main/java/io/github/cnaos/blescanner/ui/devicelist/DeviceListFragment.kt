@@ -14,10 +14,7 @@ import io.github.cnaos.blescanner.databinding.DeviceListFragmentBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.consumeEach
-import kotlinx.coroutines.launch
 import org.jetbrains.anko.AnkoLogger
-import org.jetbrains.anko.info
 import org.jetbrains.anko.intentFor
 import kotlin.coroutines.CoroutineContext
 
@@ -72,15 +69,8 @@ class DeviceListFragment : Fragment(), CoroutineScope, AnkoLogger {
 
         viewModel.bleDeviceDataList.observe(viewLifecycleOwner, Observer {
             adapter.submitList(it)
-            // なんかリストのインスタンスが同じだとリフレッシュしてやらないとだめっぽい
-            adapter.notifyDataSetChanged()
         })
 
-        launch {
-            viewModel.deviceChannel.consumeEach {
-                info("receive: ${it}")
-            }
-        }
     }
 
 }
