@@ -4,32 +4,35 @@ import android.Manifest
 import android.app.Application
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
-import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanFilter
-import android.bluetooth.le.ScanResult
-import android.bluetooth.le.ScanSettings
-import android.os.Handler
+import android.bluetooth.le.*
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
 import com.markodevcic.peko.PermissionsLiveData
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import org.jetbrains.anko.AnkoLogger
+import org.jetbrains.anko.info
 import org.jetbrains.anko.verbose
 import org.jetbrains.anko.warn
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
-import kotlin.coroutines.CoroutineContext
 
 class DeviceListViewModel(application: Application) : AndroidViewModel(application),
-    CoroutineScope, AnkoLogger {
+    AnkoLogger {
     // 定数
     companion object {
         private val SCAN_PERIOD: Long =
-            TimeUnit.MILLISECONDS.convert(20, TimeUnit.SECONDS)// スキャン時間
+            TimeUnit.MILLISECONDS.convert(10, TimeUnit.SECONDS)// スキャン時間
     }
 
+    private lateinit var scanJob: Job
     private val scannedDeviceMap = ConcurrentHashMap<String, BleDeviceData>()
 
     /**
@@ -42,32 +45,46 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
 
     val permissionLiveData = PermissionsLiveData()
     var isGrantedBLEPermission = false
-    private val handler: Handler = Handler()
 
     private val bleDeviceComparator =
         compareBy<BleDeviceData, String?>(nullsLast())
         { it.name }
             .thenBy { it.address }
 
-    private val job = Job()
-    override val coroutineContext: CoroutineContext
-        get() = job + Dispatchers.Main
 
-    override fun onCleared() {
-        job.cancel()
-    }
+    fun log(msg: String) = info("[${Thread.currentThread().name}] $msg")
 
-    // デバイススキャンコールバック
-    private val mLeScanCallback = object : ScanCallback() {
-        // スキャンに成功（アドバタイジングは一定間隔で常に発行されているため、本関数は一定間隔で呼ばれ続ける）
-        override fun onScanResult(callbackType: Int, result: ScanResult) {
-            verbose("BLE scanCallback:onScanResult result=$result")
-            addDevice(result.device)
+    fun deviceScanFlow(
+        scanner: BluetoothLeScanner,
+        scanfilters: List<ScanFilter>,
+        scanSettings: ScanSettings
+    ): Flow<ScanResult> = callbackFlow {
+        val mLeScanCallback = object : ScanCallback() {
+            // スキャンに成功（アドバタイジングは一定間隔で常に発行されているため、本関数は一定間隔で呼ばれ続ける）
+            override fun onScanResult(callbackType: Int, result: ScanResult) {
+                // log("BLE scanCallback:onScanResult result=$result")
+                offer(result)
+            }
+
+            override fun onBatchScanResults(results: MutableList<ScanResult>?) {
+                // log("BLE scanCallback:onBatchScanResults results=$results")
+                results?.forEach { offer(it) }
+            }
+        }
+        scanner.startScan(scanfilters, scanSettings, mLeScanCallback)
+
+        // 一定時間経過したらchannelをcloseするタイマーを仕掛ける
+        launch {
+            delay(SCAN_PERIOD)
+            log("channel close delay")
+            channel.close()
         }
 
-        override fun onBatchScanResults(results: MutableList<ScanResult>?) {
-            verbose("BLE scanCallback:onBatchScanResults results=$results")
-            results?.forEach { addDevice(it.device) }
+        // Suspend until either onCompleted or external cancellation are invoked
+        awaitClose {
+            log("channel closed")
+            scanner.stopScan(mLeScanCallback)
+            stopDeviceScan()
         }
     }
 
@@ -79,9 +96,10 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
         if (scannedDeviceMap.putIfAbsent(device.address, tmpBleDeviceData) != null) {
             return
         }
+        log("add device: $tmpBleDeviceData")
 
         val tmpList = scannedDeviceMap.values.sortedWith(bleDeviceComparator)
-        bleDeviceDataList.value = tmpList
+        bleDeviceDataList.postValue(tmpList)
     }
 
 
@@ -100,10 +118,6 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
             return
         }
 
-        handler.postDelayed({
-            stopDeviceScanInner()
-        }, SCAN_PERIOD)
-
         scanning.value = true
         // BLEデバイスのスキャン開始
         val scanSettings = ScanSettings.Builder()
@@ -111,22 +125,20 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
             .build()
 
         val scanfilters = listOf<ScanFilter>()
-        scanner.startScan(scanfilters, scanSettings, mLeScanCallback)
+
+        // デバイススキャンの結果を受け取るコルーチンを起動する
+        scanJob = viewModelScope.launch(Dispatchers.IO) {
+            val scanFlow = deviceScanFlow(scanner, scanfilters, scanSettings)
+            scanFlow.collect {
+                addDevice(it.device)
+            }
+        }
     }
 
     fun stopDeviceScan() {
-        // 一定期間後にスキャン停止するためのHandlerのRunnableの削除
-        handler.removeCallbacksAndMessages(null)
-        stopDeviceScanInner()
-    }
-
-    private fun stopDeviceScanInner() {
         verbose("stopDeviceScan")
-        scanning.value = false
-
-        // BLEデバイスのScan停止
-        val scanner = bluetoothAdapter.bluetoothLeScanner ?: return
-        scanner.stopScan(mLeScanCallback)
+        scanning.postValue(false)
+        scanJob.cancel()
     }
 
 
