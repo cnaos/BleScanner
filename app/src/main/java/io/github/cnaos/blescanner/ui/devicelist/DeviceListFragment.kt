@@ -65,6 +65,7 @@ class DeviceListFragment : Fragment(), CoroutineScope {
 
         viewModel.bleDeviceDataList.observe(viewLifecycleOwner, Observer {
             adapter.submitList(it)
+            adapter.notifyDataSetChanged()
         })
 
     }
