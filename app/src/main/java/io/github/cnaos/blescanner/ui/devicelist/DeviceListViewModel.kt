@@ -45,13 +45,21 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
 
     val scanning = MutableLiveData<Boolean>(false)
 
-    val deviceNameScanCount: LiveData<Int> = Transformations.map(bleDeviceDataList) {
+    val deviceNameScanedCount: LiveData<Int> = Transformations.map(bleDeviceDataList) {
         bleDeviceDataList.value?.count { it.gapScanState != BleDeviceData.Companion.ScanState.NOT_YET }
+    }
+
+    val deviceNameNotYetScanCount: LiveData<Int> = Transformations.map(bleDeviceDataList) {
+        bleDeviceDataList.value?.count { it.gapScanState == BleDeviceData.Companion.ScanState.NOT_YET }
     }
 
     val deviceNameReadActor =
         viewModelScope.actor<BleDeviceData>(capacity = 20, context = Dispatchers.IO) {
             for (it in channel) {
+                log(
+                    "deviceNameReadActor()",
+                    "count=${bleDeviceDataList.value?.size}, scanned=${deviceNameScanedCount.value} notYet=${deviceNameNotYetScanCount.value}"
+                )
                 log("deviceNameReadActor()", "actor ReadDeviceName: $it")
                 readDeviceName(it)
                 log("deviceNameReadActor()", "actor updateListOrder: $it")
@@ -173,6 +181,10 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
 
     suspend fun readDeviceName(bleDeviceData: BleDeviceData) {
         val functionName = "readDeviceName(${bleDeviceData.address})"
+        log(
+            functionName,
+            "start count=${bleDeviceDataList.value?.size}, scanned=${deviceNameScanedCount.value} notYet=${deviceNameNotYetScanCount.value}"
+        )
 
         val device = bluetoothAdapter.getRemoteDevice(bleDeviceData.address)
         if (device == null) {
@@ -190,10 +202,12 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
                     result.gatt
                 }
                 is ConnectGattResult.Canceled -> {
+                    bleDeviceData.gapScanState = BleDeviceData.Companion.ScanState.SCAN_FAILED
                     return@readDeviceName
                 }
                 is ConnectGattResult.Failure -> {
                     Timber.w("Gatt Connect failed. result=$result")
+                    bleDeviceData.gapScanState = BleDeviceData.Companion.ScanState.SCAN_FAILED
                     return@readDeviceName
                 }
                 else -> {
@@ -202,7 +216,10 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
             }
         }
 
-        log(functionName, "connected")
+        log(
+            functionName,
+            "connected count=${bleDeviceDataList.value?.size}, scanned=${deviceNameScanedCount.value} notYet=${deviceNameNotYetScanCount.value}"
+        )
 
         gatt.use { gattHandler ->
             if (gattHandler.discoverServices() != BluetoothGatt.GATT_SUCCESS) {
@@ -237,6 +254,10 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
             } else {
                 bleDeviceData.gapScanState = BleDeviceData.Companion.ScanState.SCAN_FAILED
             }
+            log(
+                functionName,
+                "finish count=${bleDeviceDataList.value?.size}, scanned=${deviceNameScanedCount.value} notYet=${deviceNameNotYetScanCount.value}"
+            )
 
             gattHandler.disconnect()
         }
