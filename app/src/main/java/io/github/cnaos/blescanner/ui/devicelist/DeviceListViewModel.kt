@@ -13,17 +13,14 @@ import com.markodevcic.peko.PermissionsLiveData
 import io.github.cnaos.blescanner.gatt.generic.GattGenericAccessUUID
 import io.github.cnaos.blescanner.gattmodel.GattDeviceModel
 import io.github.cnaos.blescanner.gattmodel.MyGattStringData
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.channels.actor
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
@@ -232,7 +229,15 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
         // `ConnectGattResult.Canceled`.
         //val gattResult = device.connectGatt(getApplication<Application>(), autoConnect = false)
         log(functionName, "connecting")
-        val gatt = device.connectGatt(getApplication(), autoConnect = false).let { result ->
+        val gattConnectResult = withTimeoutOrNull(10_000L) {
+            device.connectGatt(getApplication(), autoConnect = false)
+        }
+        if (gattConnectResult == null) {
+            log(functionName, "timeout")
+            bleDeviceData.gapScanState = BleDeviceData.Companion.ScanState.SCAN_FAILED
+            return
+        }
+        val gatt = gattConnectResult.let { result ->
             when (result) {
                 is ConnectGattResult.Success -> {
                     result.gatt
