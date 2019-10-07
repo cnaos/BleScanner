@@ -15,6 +15,7 @@ import io.github.cnaos.blescanner.gattmodel.GattDeviceModel
 import io.github.cnaos.blescanner.gattmodel.MyGattStringData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.channels.actor
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
@@ -27,6 +28,7 @@ import timber.log.Timber
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.CoroutineContext
 
 class DeviceListViewModel(application: Application) : AndroidViewModel(application) {
     // 定数
@@ -35,7 +37,9 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
             TimeUnit.MILLISECONDS.convert(20, TimeUnit.SECONDS)// スキャン時間
     }
 
-    private var scanJob: Job? = null
+    private var deviceNameReadJob: Job? = null
+    private var deviceNameReadActor: SendChannel<BleDeviceData>? = null
+    private var deviceScanJob: Job? = null
     private val scannedDeviceMap = ConcurrentHashMap<String, BleDeviceData>()
 
     /**
@@ -45,27 +49,26 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
 
     val scanning = MutableLiveData<Boolean>(false)
 
-    val deviceNameScanedCount: LiveData<Int> = Transformations.map(bleDeviceDataList) {
-        bleDeviceDataList.value?.count { it.gapScanState != BleDeviceData.Companion.ScanState.NOT_YET }
+
+    val scanCountMap: LiveData<Map<String, Int>> = Transformations.map(bleDeviceDataList) {
+        bleDeviceDataList.value?.groupingBy { it.gapScanState.name }?.eachCount()
     }
 
-    val deviceNameNotYetScanCount: LiveData<Int> = Transformations.map(bleDeviceDataList) {
-        bleDeviceDataList.value?.count { it.gapScanState == BleDeviceData.Companion.ScanState.NOT_YET }
-    }
-
-    val deviceNameReadActor =
-        viewModelScope.actor<BleDeviceData>(capacity = 20, context = Dispatchers.IO) {
+    private fun createActor(context: CoroutineContext): SendChannel<BleDeviceData> {
+        return viewModelScope.actor<BleDeviceData>(
+            capacity = 20,
+            context = context + Dispatchers.IO
+        ) {
             for (it in channel) {
-                log(
-                    "deviceNameReadActor()",
-                    "count=${bleDeviceDataList.value?.size}, scanned=${deviceNameScanedCount.value} notYet=${deviceNameNotYetScanCount.value}"
-                )
+                log("deviceNameReadActor()", "count=${scanCountMap.value}")
                 log("deviceNameReadActor()", "actor ReadDeviceName: $it")
                 readDeviceName(it)
                 log("deviceNameReadActor()", "actor updateListOrder: $it")
                 updateListOrder()
             }
+            log("deviceNameReadActor()", "actor closed")
         }
+    }
 
     lateinit var bluetoothAdapter: BluetoothAdapter
 
@@ -127,11 +130,11 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
         if (scannedDeviceMap.putIfAbsent(device.address, tmpBleDeviceData) != null) {
             return
         }
-        log(functionName, "$tmpBleDeviceData")
+        log(functionName, "count=$tmpBleDeviceData")
 
         updateListOrder()
 
-        deviceNameReadActor.send(tmpBleDeviceData)
+        deviceNameReadActor?.send(tmpBleDeviceData)
     }
 
     private fun updateListOrder() {
@@ -156,35 +159,66 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
         }
 
         scanning.postValue(true)
+
         // BLEデバイスのスキャン開始
+        // 前のデバイス名読み出しjobをキャンセルする
+        cancelNameReadJob()
+
+        // デバイス名読み出しjobを作り直し
+        if (deviceNameReadJob == null || deviceNameReadJob!!.isCancelled) {
+            deviceNameReadJob = Job()
+        }
+
+        if (deviceNameReadActor == null || deviceNameReadActor!!.isClosedForSend) {
+            deviceNameReadActor = createActor(deviceNameReadJob!!)
+        }
+
+        // デバイススキャンの結果を受け取るコルーチンを起動する
         val scanSettings = ScanSettings.Builder()
             .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
             .build()
 
         val scanfilters = listOf<ScanFilter>()
 
-        // デバイススキャンの結果を受け取るコルーチンを起動する
-        scanJob = viewModelScope.launch(Dispatchers.IO) {
+        deviceScanJob = viewModelScope.launch(Dispatchers.IO) {
             val scanFlow = deviceScanFlow(scanner, scanfilters, scanSettings)
             scanFlow.buffer().collect {
                 addDevice(it.device)
             }
         }
+
+        // デバイス名の再取得
+        viewModelScope.launch(Dispatchers.IO) {
+            scannedDeviceMap.values.filter { it.gapScanState != BleDeviceData.Companion.ScanState.SCAN_SUCCESS }
+                .forEach {
+                    it.gapScanState = BleDeviceData.Companion.ScanState.NOT_YET
+                    deviceNameReadActor?.send(it)
+                }
+        }
+
     }
 
     fun stopDeviceScan() {
         Timber.v("stopDeviceScan")
         scanning.postValue(false)
-        scanJob?.cancel()
+        cancelDeviceScanJob()
+    }
+
+    fun cancelDeviceScanJob() {
+        Timber.v("cancel deviceScanJob")
+        deviceScanJob?.cancel()
+    }
+
+    fun cancelNameReadJob() {
+        Timber.v("cancel deivceNameReadJob")
+        deviceNameReadJob?.cancel()
+        deviceNameReadActor?.close()
     }
 
 
     suspend fun readDeviceName(bleDeviceData: BleDeviceData) {
         val functionName = "readDeviceName(${bleDeviceData.address})"
-        log(
-            functionName,
-            "start count=${bleDeviceDataList.value?.size}, scanned=${deviceNameScanedCount.value} notYet=${deviceNameNotYetScanCount.value}"
-        )
+        log(functionName, "start count=${scanCountMap.value}")
 
         val device = bluetoothAdapter.getRemoteDevice(bleDeviceData.address)
         if (device == null) {
@@ -202,6 +236,7 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
                     result.gatt
                 }
                 is ConnectGattResult.Canceled -> {
+                    Timber.w("Gatt Connect canceled. result=$result")
                     bleDeviceData.gapScanState = BleDeviceData.Companion.ScanState.SCAN_FAILED
                     return@readDeviceName
                 }
@@ -218,7 +253,7 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
 
         log(
             functionName,
-            "connected count=${bleDeviceDataList.value?.size}, scanned=${deviceNameScanedCount.value} notYet=${deviceNameNotYetScanCount.value}"
+            "connected ${scanCountMap.value}"
         )
 
         gatt.use { gattHandler ->
@@ -256,7 +291,7 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
             }
             log(
                 functionName,
-                "finish count=${bleDeviceDataList.value?.size}, scanned=${deviceNameScanedCount.value} notYet=${deviceNameNotYetScanCount.value}"
+                "finish ${scanCountMap.value}"
             )
 
             gattHandler.disconnect()

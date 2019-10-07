@@ -103,6 +103,7 @@ class DeviceListActivity : AppCompatActivity() {
 
         // スキャンの停止
         viewModel.stopDeviceScan()
+        viewModel.cancelNameReadJob()
     }
 
 
