@@ -29,7 +29,6 @@ data class BleDeviceData(
             }
             return false
         }
-    val tint: String = if (isKnownDevice) "#FF0000FF" else "#ffB0B0B0"
 
     companion object {
         val ITEM_CALLBACK = object : DiffUtil.ItemCallback<BleDeviceData>() {

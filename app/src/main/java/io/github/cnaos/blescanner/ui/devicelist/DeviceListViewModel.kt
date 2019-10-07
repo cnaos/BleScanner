@@ -162,7 +162,9 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
 
         // BLEデバイスのスキャン開始
         // 前のデバイス名読み出しjobをキャンセルする
-        cancelNameReadJob()
+        if (deviceNameReadJob != null && deviceNameReadJob!!.isActive) {
+            cancelNameReadJob()
+        }
 
         // デバイス名読み出しjobを作り直し
         if (deviceNameReadJob == null || deviceNameReadJob!!.isCancelled) {

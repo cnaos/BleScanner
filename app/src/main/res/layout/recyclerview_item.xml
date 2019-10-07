@@ -25,7 +25,7 @@
             android:layout_gravity="center_vertical"
             android:contentDescription="device icon"
             app:srcCompat="@drawable/ic_bluetooth_24px"
-            app:tint="@{bleDevice.tint}" />
+            app:tint="@{(bleDevice.knownDevice ? `#FF0000FF` :`#ffB0B0B0`)}" />
 
         <com.lelloman.identicon.view.ClassicIdenticonView
             android:layout_width="@android:dimen/app_icon_size"
@@ -57,6 +57,12 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@{bleDevice.displayName}"
+                android:textSize="18sp" />
+            <TextView
+                android:id="@+id/textview_scanstate"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@{bleDevice.gapScanState.name()}"
                 android:textSize="18sp" />
         </LinearLayout>
 
