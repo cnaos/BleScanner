@@ -4,7 +4,10 @@
 
 <img src="https://github.com/cnaos/picture/raw/master/BleScanner/device_list.png" width="25%"/><img src="https://github.com/cnaos/picture/raw/master/BleScanner/device_detail.png" width="25%"/>
 
-googleの[Android BluetoothLeGatt Sample](https://github.com/android/connectivity-samples/tree/master/BluetoothLeGatt)をベースに、
+googleの[Android BluetoothLeGatt Sample](https://github.com/android/connectivity-samples/tree/master/BluetoothLeGatt)
+と、
+HIRAMINEさんの[BLE通信ソフトを作る( Android Studio 2.3.3 + RN4020 )](https://www.hiramine.com/programming/blecommunicator/index.html)
+をベースに、
 以下のライブラリを組み込んでみたサンプルです。
 
 * Able
@@ -13,7 +16,6 @@ googleの[Android BluetoothLeGatt Sample](https://github.com/android/connectivit
 * Peko
   * https://github.com/deva666/Peko
   * Android PermissionsをKotlin Coroutineまたは、LiveDataで扱えるようにするためのライブラリ
-  
 * android-identicons
   * https://github.com/lelloman/android-identicons
   * Ideticonを生成するためのライブラリ
