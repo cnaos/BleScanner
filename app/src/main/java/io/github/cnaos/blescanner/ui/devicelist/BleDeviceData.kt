@@ -33,7 +33,7 @@ data class BleDeviceData(
     companion object {
         val ITEM_CALLBACK = object : DiffUtil.ItemCallback<BleDeviceData>() {
             override fun areItemsTheSame(oldItem: BleDeviceData, newItem: BleDeviceData): Boolean =
-                oldItem.address == newItem.address
+                oldItem === newItem
 
             override fun areContentsTheSame(
                 oldItem: BleDeviceData,
