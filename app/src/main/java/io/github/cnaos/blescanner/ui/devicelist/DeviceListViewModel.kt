@@ -50,25 +50,6 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
         bleDeviceDataList.value?.groupingBy { it.gapScanState.name }?.eachCount()
     }
 
-    /**
-     * BLEデバイス名を取得するためのActorを作る
-     */
-    private fun createActor(context: CoroutineContext): SendChannel<BleDeviceData> {
-        return viewModelScope.actor<BleDeviceData>(
-            capacity = 20,
-            context = context + Dispatchers.IO
-        ) {
-            for (it in channel) {
-                log("deviceNameReadActor()", "count=${scanCountMap.value}")
-                log("deviceNameReadActor()", "actor ReadDeviceName: $it")
-                readDeviceName(it)
-                log("deviceNameReadActor()", "actor updateListOrder: $it")
-                updateListOrder()
-            }
-            log("deviceNameReadActor()", "actor closed")
-        }
-    }
-
     lateinit var bluetoothAdapter: BluetoothAdapter
 
     val permissionLiveData = PermissionsLiveData()
@@ -121,6 +102,25 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
             log(functionName, "channel closed")
             scanner.stopScan(mLeScanCallback)
             stopDeviceScan()
+        }
+    }
+
+    /**
+     * BLEデバイス名を取得するためのActorを作る
+     */
+    private fun createActor(context: CoroutineContext): SendChannel<BleDeviceData> {
+        return viewModelScope.actor<BleDeviceData>(
+            capacity = 20,
+            context = context + Dispatchers.IO
+        ) {
+            for (it in channel) {
+                log("deviceNameReadActor()", "count=${scanCountMap.value}")
+                log("deviceNameReadActor()", "actor ReadDeviceName: $it")
+                readDeviceName(it)
+                log("deviceNameReadActor()", "actor updateListOrder: $it")
+                updateListOrder()
+            }
+            log("deviceNameReadActor()", "actor closed")
         }
     }
 
