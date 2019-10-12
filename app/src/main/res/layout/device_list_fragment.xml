@@ -55,10 +55,10 @@
 
             </androidx.constraintlayout.widget.ConstraintLayout>
 
-            <LinearLayout
+
+            <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:layout_height="wrap_content">
 
                 <TextView
                     android:id="@+id/labelScanNotYet"
@@ -66,45 +66,65 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
                     android:text="notYet:"
-                    android:textSize="18sp" />
+                    android:textSize="18sp"
+                    app:layout_constraintBaseline_toBaselineOf="@+id/nameReadNotYetCount"
+                    app:layout_constraintEnd_toStartOf="@+id/nameReadNotYetCount"
+                    app:layout_constraintStart_toStartOf="parent" />
 
                 <TextView
                     android:id="@+id/nameReadNotYetCount"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_marginEnd="16dp"
                     android:text="@{viewModel.scanCountMap.containsKey(`NOT_YET`)? ``+viewModel.scanCountMap.get(`NOT_YET`):`0`}"
-                    android:textSize="18sp" />
+                    android:textSize="18sp"
+                    app:layout_constraintEnd_toStartOf="@+id/labelScanOK"
+                    app:layout_constraintStart_toEndOf="@+id/labelScanNotYet"
+                    app:layout_constraintTop_toTopOf="parent" />
 
                 <TextView
                     android:id="@+id/labelScanOK"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
                     android:text="OK:"
-                    android:textSize="18sp" />
+                    android:textSize="18sp"
+                    app:layout_constraintBaseline_toBaselineOf="@+id/nameReadNotYetCount"
+                    app:layout_constraintEnd_toStartOf="@+id/nameReadOkCount"
+                    app:layout_constraintStart_toEndOf="@+id/nameReadNotYetCount" />
 
                 <TextView
                     android:id="@+id/nameReadOkCount"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_marginEnd="16dp"
                     android:text="@{viewModel.scanCountMap.containsKey(`SCAN_SUCCESS`)? ``+viewModel.scanCountMap.get(`SCAN_SUCCESS`):`0`}"
-                    android:textSize="18sp" />
+                    android:textSize="18sp"
+                    app:layout_constraintBaseline_toBaselineOf="@+id/labelScanOK"
+                    app:layout_constraintEnd_toStartOf="@+id/labelScanNG"
+                    app:layout_constraintStart_toEndOf="@+id/labelScanOK" />
 
                 <TextView
                     android:id="@+id/labelScanNG"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
                     android:text="NG:"
-                    android:textSize="18sp" />
+                    android:textSize="18sp"
+                    app:layout_constraintBaseline_toBaselineOf="@+id/nameReadOkCount"
+                    app:layout_constraintEnd_toStartOf="@+id/nameReadNGCount"
+                    app:layout_constraintStart_toEndOf="@+id/nameReadOkCount" />
 
                 <TextView
                     android:id="@+id/nameReadNGCount"
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_marginEnd="16dp"
                     android:text="@{viewModel.scanCountMap.containsKey(`SCAN_FAILED`)? ``+viewModel.scanCountMap.get(`SCAN_FAILED`):`0`}"
-                    android:textSize="18sp" />
-            </LinearLayout>
+                    android:textSize="18sp"
+                    app:layout_constraintBaseline_toBaselineOf="@+id/labelScanNG"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toEndOf="@+id/labelScanNG" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
 
             <androidx.recyclerview.widget.RecyclerView
