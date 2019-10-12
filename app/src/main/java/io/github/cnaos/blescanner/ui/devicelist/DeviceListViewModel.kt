@@ -39,18 +39,20 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
     private var deviceScanJob: Job? = null
     private val scannedDeviceMap = ConcurrentHashMap<String, BleDeviceData>()
 
-    /**
-     * 表示用のデバイスリスト
-     */
+    // 画面表示用のデバイスリスト
     val bleDeviceDataList = MutableLiveData<List<BleDeviceData>>(listOf<BleDeviceData>())
 
+    // 画面にBLEデバイスのスキャンの状態を表示する
     val scanning = MutableLiveData<Boolean>(false)
 
-
+    // 画面にデバイス名のスキャン状況を表示する
     val scanCountMap: LiveData<Map<String, Int>> = Transformations.map(bleDeviceDataList) {
         bleDeviceDataList.value?.groupingBy { it.gapScanState.name }?.eachCount()
     }
 
+    /**
+     * BLEデバイス名を取得するためのActorを作る
+     */
     private fun createActor(context: CoroutineContext): SendChannel<BleDeviceData> {
         return viewModelScope.actor<BleDeviceData>(
             capacity = 20,
@@ -75,6 +77,9 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
     fun log(functionName: String, msg: String) =
         Timber.v("[${Thread.currentThread().name}] $functionName $msg")
 
+    /**
+     * BLEデバイスのスキャンを行うFlowを作る
+     */
     fun deviceScanFlow(
         scanner: BluetoothLeScanner,
         scanfilters: List<ScanFilter>,
@@ -82,7 +87,7 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
     ): Flow<ScanResult> = callbackFlow {
         val functionName = "deviceScanFlow()"
         val mLeScanCallback = object : ScanCallback() {
-            // スキャンに成功（アドバタイジングは一定間隔で常に発行されているため、本関数は一定間隔で呼ばれ続ける）
+            // デバイスが検出されると呼ばれる
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 // log("BLE scanCallback:onScanResult result=$result")
                 if (channel.isClosedForSend) {
@@ -101,6 +106,7 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
                 }
             }
         }
+        // BLEデバイスのスキャン開始
         scanner.startScan(scanfilters, scanSettings, mLeScanCallback)
 
         // 一定時間経過したらchannelをcloseするタイマーを仕掛ける
@@ -215,6 +221,9 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
     }
 
 
+    /**
+     * スキャンしたBLEデバイスのGATTプロファイルからデバイス名を取得する
+     */
     suspend fun readDeviceName(bleDeviceData: BleDeviceData) {
         val functionName = "readDeviceName(${bleDeviceData.address})"
         log(functionName, "start count=${scanCountMap.value}")
@@ -225,9 +234,6 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
             return
         }
 
-        // If ViewModel is destroyed during connection attempt, then `result` will contain
-        // `ConnectGattResult.Canceled`.
-        //val gattResult = device.connectGatt(getApplication<Application>(), autoConnect = false)
         log(functionName, "connecting")
         val gattConnectResult = withTimeoutOrNull(10_000L) {
             device.connectGatt(getApplication(), autoConnect = false)
