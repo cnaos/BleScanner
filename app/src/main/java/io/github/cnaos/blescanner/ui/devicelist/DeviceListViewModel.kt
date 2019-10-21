@@ -37,6 +37,8 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
     private var deviceNameReadJob: Job? = null
     private var deviceNameReadActor: SendChannel<BleDeviceData>? = null
     private var deviceScanJob: Job? = null
+
+    // スキャンしたBLEデバイスを記録しておくMap
     private val scannedDeviceMap = ConcurrentHashMap<String, BleDeviceData>()
 
     // 画面表示用のデバイスリスト
@@ -54,6 +56,7 @@ class DeviceListViewModel(application: Application) : AndroidViewModel(applicati
 
     val permissionLiveData = PermissionsLiveData()
     var isGrantedBLEPermission = false
+    val isLocationEnabled = MutableLiveData<Boolean>(false)
 
     fun log(functionName: String, msg: String) =
         Timber.v("[${Thread.currentThread().name}] $functionName $msg")
